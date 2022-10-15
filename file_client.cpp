@@ -9,6 +9,22 @@
 
 using namespace std;
 
+void send_file(FILE *fp, int listening)
+{
+    char data[4096] = {0};
+    while(fgets(data, 4096, fp) != NULL)
+    {
+        if(send(listening, data, sizeof(data), 0) == -1)
+        {
+            cerr << "Error in sending data...\n";
+            exit(1);
+        }
+        memset(data, 0, 4096);
+    }
+    return;
+}
+
+
 int main(int argc, char *argv[])
 {
     int i;
@@ -20,7 +36,7 @@ int main(int argc, char *argv[])
     // int port_no = atoi(argv[2]);            // Convert string into its equivalent integer
 
     FILE *fp;
-    char *filename = "gfg.cpp";
+    char *filename = "dummy.txt";
 
 
     int listening = socket(AF_INET, SOCK_STREAM, 0);
@@ -53,11 +69,16 @@ int main(int argc, char *argv[])
     else
         cout << "Connection through server established..!!\n";
 
-        fp = fopen(filename, "r");
-        if(fp == NULL)
-        {
-            
-        }
+
+        // fp = fopen(filename, "r");
+        // if(fp == NULL)
+        // {
+        //     cout<<"Error in file reading...\n";
+        //     exit(1);
+        // }
+        // send_file(fp, listening);
+        // cout << "File data send successfullY...\n";
+
         
 
     char buffer[4096];
@@ -84,13 +105,16 @@ int main(int argc, char *argv[])
         }
         cout << "\nServer --> " << buffer;
         if(!strncmp("exit", buffer, 4)){
-            break;
+            close(listening);
+            cout << "Socket Connection Closed...\n";
+            // break;
             exit(1);
         }
 
         // cout<< "It's your turn to write: ";
     }
     close(listening);
+    cout << "Socket Connection Closed...\n";
 
     return 0;
 }
