@@ -116,9 +116,9 @@ class myFile{
         ll filesize;
         vector<string> sha1;
         vector<pair<string, bool>> fileshare;
-        myFile(string filename, ll size)
+        myFile(string fname, ll size)
         {
-            filename = filename;
+            filename = fname;
             filesize = size;
         }
 
@@ -127,11 +127,15 @@ class myFile{
         }
         bool isUser(string str)
         {
-            for(auto i=fileshare.begin(); i!=fileshare.end(); i++)
-            {
-                if(str == i->first)
+            // for(auto i=fileshare.begin(); i!=fileshare.end(); i++)
+            // {
+            //     if(str == i->first)
+            //         return 1;
+            // }
+            for(auto s: fileshare){
+                if(s.first == str)
                     return 1;
-            }
+		    }
             return 0;
         }
 };
@@ -334,9 +338,16 @@ void getCommand(int client_socket)
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }                        
             else{
-                groups[command[2]]->pendingRequests.push_back(command[0]);
-                string reply = "Wait for some time until someone accepts your request to join\n";
-                send(client_socket, reply.c_str(), reply.size(), 0);
+                int size = groups[command[2]]->pendingRequests.size();
+                if(size > 0){
+                    string reply = "Wait fot the existing request to confirm..\n";
+                    send(client_socket, reply.c_str(), reply.size(), 0);
+                }
+                else{
+                    groups[command[2]]->pendingRequests.push_back(command[0]);
+                    string reply = "Wait for some time until someone accepts your request to join\n";
+                    send(client_socket, reply.c_str(), reply.size(), 0);
+                }
             }
         }
         else if(strcmp(command[0].c_str(), "leave_group") == 0)
@@ -385,6 +396,7 @@ void getCommand(int client_socket)
         }
         else if(strcmp(command[0].c_str(), "accept_request") == 0)
         {
+            cout << command[2] << " " << command[7] << "\n";
             if(!isUserExists(command[7]))
             {
                 string reply = "User doesn't exists...\n";
@@ -402,13 +414,13 @@ void getCommand(int client_socket)
                 char msg[] = "No pending request found...\n";
 				send(client_socket, msg , strlen(msg) , 0 );
             }
-            else{
+            else{           // accept_request  of  userid(2)  in  group  group_id(5)  by  username(7)
                 groups[command[5]]->accept_request(command[2]);
-                string reply= "";
-                for(auto i=0; i<groups[command[5]]->pendingRequests.size(); i++)
-                    reply+= groups[command[5]]->pendingRequests[i] + "\n";
-                if(reply== "")
-                    reply= "No request yet...\n";
+                string reply= "Request Accepted..\n"; // "";
+                // for(auto i=0; i<groups[command[5]]->pendingRequests.size(); i++)
+                //     reply+= groups[command[5]]->pendingRequests[i] + "\n";
+                // if(reply== "")
+                //     reply= "No request yet...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
                 cout << reply <<"\n";
             }
@@ -435,7 +447,7 @@ void getCommand(int client_socket)
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }            
         }
-        else if(strcmp(command[0].c_str(), "list_files") == 0) //
+        else if(strcmp(command[0].c_str(), "list_files") == 0)
         {
             if(!isUserExists(command[2]))
             {
@@ -446,7 +458,7 @@ void getCommand(int client_socket)
                 string reply = "Group doesn't exists...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }
-            else if(!groups[command[2]]->isMember(command[1])){
+            else if(!groups[command[1]]->isMember(command[2])){
                 string reply = "You are not the member of the group, " + command[1] + "...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }
@@ -461,7 +473,86 @@ void getCommand(int client_socket)
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }
         }
+        
+        else if(strcmp(command[0].c_str(), "upload_file") == 0){        // Error Handling
+            if(!isUserExists(command[3]))
+            {
+                string reply = "User doesn't exists...\n";
+                send(client_socket, reply.c_str(), reply.size(), 0);
+            }
+            else if(!isGroupExists(command[2])){
+                string reply = "Group doesn't exists...\n";
+                send(client_socket, reply.c_str(), reply.size(), 0);
+            }
+            else if(!groups[command[2]]->isMember(command[3])){
+                string reply = "You are not the member of the group, " + command[2] + "...\n";
+                send(client_socket, reply.c_str(), reply.size(), 0);
+            }
+            else{
+                if(!groups[command[2]]->isFile(command[4]))
+                    groups[command[2]]->group_files.push_back(command[4]);
+                if(files.find(command[4]) != files.end()){
+                    if(files[command[4]]->isUser(command[3]))
+                    {
+                        string reply = "File is already there...\n";
+                        send(client_socket, reply.c_str(), reply.size(), 0);
+                    }                
+                    else{
+                        files[command[4]]->add(command[3]);
+                        users[command[3]]->fnameToPath[command[4]] = command[5];
+                        string reply = command[4] + " Uploaded Successfully...\n";
+                        send(client_socket, reply.c_str(), reply.size(), 0);
+                    }
+                }
+                else{
+                    myFile* newfile = new myFile(command[4], stoi(command[6]));     // Make a new file with entries file name and file size
+                    newfile->add(command[3]);           // Add in fileshare vector wrt username
+                    files[command[4]] = newfile;        // Add in map with key as its filename
+                    users[command[3]]->fnameToPath[command[3]] = command[5];    // Add in map wrt username
+                    for(int i=7; i<command.size(); i++)
+                        newfile->sha1.push_back(command[i]);        // Add in SHA1
+                    string reply = command[4] + " Uploaded Successfully...\n";
+                    send(client_socket, reply.c_str(), reply.size(), 0);
+                }
+            }
+        }
+        else if(strcmp(command[0].c_str(), "download_file") == 0){
 
+        }
+        else if(strcmp(command[0].c_str(), "stop_share") == 0){
+            if(!isUserExists(command[3]))
+            {
+                string reply = "User doesn't exists...\n";
+                send(client_socket, reply.c_str(), reply.size(), 0);
+            }
+            else if(!isGroupExists(command[1])){
+                string reply = "Group doesn't exists...\n";
+                send(client_socket, reply.c_str(), reply.size(), 0);
+            }
+            else if(!isGroupExists(command[2])){
+                string reply = "File doesn't exists...\n";
+                send(client_socket, reply.c_str(), reply.size(), 0);
+            }
+            else if(!groups[command[2]]->isMember(command[3])){
+                string reply = "You are not the member of the group, " + command[2] + "...\n";
+                send(client_socket, reply.c_str(), reply.size(), 0);
+            }
+            else{       // stop_share <group_id> <file_name> username;
+                for(auto i = files[command[2]]->fileshare.begin(); i != files[command[2]]->fileshare.end(); i++)
+                {
+                    if(i->first == command[3])
+                    {
+                        i->second = 0;
+                        break;
+                    }
+                }
+                string reply = "Stopped Sharing...\n";
+                send(client_socket, reply.c_str(), reply.size(), 0);
+            }
+        }
+        else {
+            cout << "Wrong Input on server side..\n";
+        }
     }
 
 
@@ -572,14 +663,15 @@ int main(int argc, char *argv[])
 
 
     // Bind the socket to a IP/Port
-    sockaddr_in server_addr;                // sockaddr_in is for IPv4
+    sockaddr_in server_addr;                       // sockaddr_in is for IPv4
                                             // Sockaddr_in is for IPv6
-    server_addr.sin_family = AF_INET;           // sin is shorthand for the name of the struct (sockaddr_in) that the member-variables are a part of.
+    server_addr.sin_family = AF_INET;                  // sin is shorthand for the name of the struct (sockaddr_in) that the member-variables are a part of.
                                                 // sin_family refers to an address family which in most of the cases is set to “AF_INET”.
     server_addr.sin_port = htons(stoi(tracker_port.c_str()));       // The htons function takes a 16-bit number in host byte order and returns a 16-bit number in network byte order used in TCP/IP networks.
                                         // Intel supports little-endian format, which means the leats significant bytes are stored before the more significant bytes.
                                         // htons refers to host-to-network short.
     inet_pton(AF_INET, tracker_ip.c_str(), &server_addr.sin_addr);      // The inet_pton() function converts an Internet address in its standard text format into its numeric binary form.
+
     int binding = bind(listening, (sockaddr *)&server_addr, sizeof(server_addr));       // The bind() function binds a unique local name to the socket with descriptor socket.
                     // Bind socket "listening" using format "AF_NET" to "server_addr" structure
     if(binding == -1)                           
@@ -599,13 +691,20 @@ int main(int argc, char *argv[])
     }
     cout << "Socket Start Listening...\n";
 
-     
+    
+
+    
     // sockaddr_in client_addr;
     char host[NI_MAXHOST];
     char service[NI_MAXSERV]; 
- 
+
+
+
     // accept_file(client_socket);
     // cout << "Data written in the text file...\n";
+
+    
+
 
     // While recieving, display the msg
     char buffer[4096];
@@ -662,12 +761,14 @@ int main(int argc, char *argv[])
             // cout << "Error in Writing.\n";
             // exit(1);
         // }
+        
         // if(!strncmp("exit", buffer, 4)){
         //     close(listening);
         //     cout << "Socket Connection Closed...\n";
         //     // break;
         //     exit(1);
         // }
+
 
     }
     cout << "Total threads = " << peers.size() << "\n";

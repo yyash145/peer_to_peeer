@@ -126,6 +126,7 @@ void serve_to_peers(string IP,string port){
 	}
 
 }
+
 void download_chunk(string file_name,string sha1_of_this_chunk,int chunk_no, string IP, string port,string dest){
 	int peer_sock = 0;
 	struct sockaddr_in serv_addr; 
@@ -508,6 +509,7 @@ int main(int argc, char const *argv[])
 				cout<<"No User Logged in\n";
 				continue;
 			}
+			//  download_file <group_id> <file_name> <destination_path>
 			string file_name = cmds[2], dest_path = cmds[3];
 			string fileNpeersinfo = send_message(tracker_sock,"download "+file_name+" "+cmds[1]+" "+uname);
 			// cout<<fileNpeersinfo<<endl;

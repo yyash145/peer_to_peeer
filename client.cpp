@@ -57,6 +57,17 @@ string absolute_path(string path)
     return abs_path;
 }
 
+int check_dir(string path)
+{
+    struct stat str;
+    if (stat(path.c_str(), &str) != 0)
+        return 0;
+    if (S_ISDIR(str.st_mode))
+        return 1;
+    else
+        return 0;
+}
+
 mode_t check_mode(string path)
 {
     struct stat str;
@@ -76,42 +87,47 @@ mode_t check_mode(string path)
     return mode;
 }
 
-void copy_file(vector<string> str)
+// void copy_file(vector<string> str)
+void copy_file(string file_name, string destination_path)
 {
     getcwd(ch, sizeof(ch));
     cur_direc = ch;
-    string dest = absolute_path(str[str.size() - 1]);
-    int i;
-    for (i = 1; i < str.size() - 1; i++)
+    string source = absolute_path(file_name);
+    string dest = absolute_path(destination_path);
+    string destination = dest + file_name;
+
+
+    cout << "Destination Path = " << dest << "\n";
+    if (!(check_dir(dest)))
     {
-        string source = absolute_path(str[i]);
-        vector<string> source_files = split(str[i], "/");
-        string destination = dest + "/" + source_files[source_files.size() - 1];
+        cout << "Destination type is not a directory";
+        // return;
+    }
+    mode_t mode = check_mode(source);
 
-        mode_t mode = check_mode(source);
-        int src_open = open(source.c_str(), O_RDONLY);
-        int des_open = open(dest.c_str(), O_CREAT | O_WRONLY, mode);
-        char c;
-        if (src_open == -1)
-        {
-            cout << "Error in Opening Source File";
-            return;
-        }
-        if (des_open == -1)
-        {
-            cout << "File Already Exist";
-            return;
-        }
-        while (read(src_open, &c, 1))
-            write(des_open, &c, 1);
-
-        close(src_open);
-        close(des_open);
+    int src_open = open(source.c_str(), O_RDONLY);
+    int des_open = open(dest.c_str(), O_CREAT | O_WRONLY, mode);
+    char c;
+    if (src_open == -1)
+    {
+        cout << "Error in Opening Source File";
         return;
     }
+    // if (des_open == -1)
+    // {
+        // cout << "File Already Exist";
+        // return;
+    // }
+
+    while (read(src_open, &c, 1))
+        write(des_open, &c, 1);
+
+    close(src_open);
+    close(des_open);
 
     return;
 }
+
 
 string send_message(int listening, string str)
 {
@@ -147,8 +163,84 @@ void logout()
     filenameToPath.clear();
 }
 
-void commands(string a, string b)
+void serving_util(int new_socket)
 {
+    cout << "Hii..\n";
+    return;
+}
+
+// Client socket and server socket should be same??
+void create_thread_after_each_client_formation(string ip, string port)
+{
+    int listening = socket(AF_INET, SOCK_STREAM, 0);
+    if (listening == -1)
+    {
+        cerr << "Can't create a socket\n";
+        exit(EXIT_FAILURE);
+    }
+    // cout << "Socket Created...\n";
+
+    // int opt = 1;
+    // int set_socket = setsockopt(listening, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
+    // if(set_socket == -1)
+    // {
+    //     cerr << "Socket can't be set to port 8080";
+    //     return -1;
+    // }
+
+    sockaddr_in server_addr, client_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(stoi(port.c_str()));
+    inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr);
+
+    int binding = bind(listening, (sockaddr *)&server_addr, sizeof(server_addr));
+    if (binding == -1)
+    {
+        cerr << "Can't bind the socket to IP / Port Address.\n";
+        exit(EXIT_FAILURE);
+    }
+    // cout<<"Socket Binded...\n";
+
+    int socket_listening = listen(listening, SOMAXCONN);
+    if (socket_listening == -1)
+    {
+        cerr << "Can't Listen.\n";
+        exit(EXIT_FAILURE);
+    }
+    // cout << "Socket Start Listening...\n";
+
+    char host[NI_MAXHOST];
+    char service[NI_MAXSERV];
+    vector<thread> servingPeerThread;
+    // While recieving, display the msg
+    char buffer[4096];
+    while (true)
+    {
+        memset(buffer, 0, 4096);
+        socklen_t client_size = sizeof(client_addr);
+        int client_socket = accept(listening, (sockaddr *)&client_addr, &client_size);
+        if (client_socket == -1)
+        {
+            cerr << "Probem with client connecting.\n";
+            exit(EXIT_FAILURE);
+        }
+        cout << "This client and parent client connected...\n";
+
+        memset(host, 0, NI_MAXHOST); // Cleaning up the arrays
+        memset(service, 0, NI_MAXSERV);
+
+        int result = getnameinfo((sockaddr *)&client_addr, sizeof(client_addr), host, NI_MAXHOST, service, NI_MAXSERV, 0);
+        if (result)
+        {
+            cout << host << " connected on " << service << "\n";
+        }
+        else
+        {
+            inet_ntop(AF_INET, &client_addr.sin_addr, host, NI_MAXHOST);
+            cout << host << " connented on " << ntohs(client_addr.sin_port) << "\n";
+        }
+        servingPeerThread.push_back(thread(serving_util, client_socket));
+    }
     return;
 }
 
@@ -211,7 +303,9 @@ int main(int argc, char *argv[])
     }
     cout << "Client Connected with server...\n";
 
-    thread thr(commands, client_ip, client_port);
+    // thread thr(create_thread_after_each_client_formation, client_ip, client_port);
+    // Whenever we make any client, it can also seld files, hence have to be act as a server.
+    // Therefore, we have to make a thread after connection to ensure the same.
     char buffer[4096];
     while (true)
     {
@@ -395,7 +489,7 @@ int main(int argc, char *argv[])
                 continue;
             }
             else
-            {           // accept_request <group_id> <user_id> username  
+            { // accept_request <group_id> <user_id> username
                 string argument = "accept_request of " + command[2] + " in group " + command[1] + " by " + username;
                 string reply = send_message(listening, argument);
                 cout << reply << endl;
@@ -415,7 +509,7 @@ int main(int argc, char *argv[])
             }
             else
             {
-                string reply = send_message(listening, "list_groups " + username );
+                string reply = send_message(listening, "list_groups " + username);
                 cout << reply << endl;
             }
         }
@@ -449,26 +543,26 @@ int main(int argc, char *argv[])
                 cout << "Login First..\n";
             else if (isLoggedIn == 1)
             {
-                string file_path = command[1];
+                // string file_path = command[1];
                 string file_name = "";
-                int size_of_file_path = file_path.size();
+                int size_of_file_path = command[1].size();
                 int i = size_of_file_path - 1;
-                while (file_path[i--] != '/')
+                while (command[1][i--] != '/')
                     ;
                 i += 2;
                 while (i < size_of_file_path)
-                    file_name += file_path[i++];
+                    file_name += command[1][i++];
 
-                FILE *fp = fopen(file_path.c_str(), "r");
+                FILE *fp = fopen(command[1].c_str(), "r");
                 if (fp == NULL)
                 {
                     cout << "File not found..\n";
-                    return -1;
+                    continue;
                 }
                 fseek(fp, 0L, SEEK_END);
                 long int file_size = ftell(fp);
                 fclose(fp);
-                cout << "File size of " << file_path << " is " << file_size << "\n";
+                cout << "File size of " << command[1] << " is " << file_size << "\n";
                 cout << "File Name is -> " << file_name << "\n";
                 if (file_size >= 0)
                 {
@@ -476,15 +570,16 @@ int main(int argc, char *argv[])
                     size_t chunk_size = chunksize;
                     cout << "Chunk Size = " << chunk_size << "\n";
                     char *chunk = new char[chunk_size];
-                    filenameToPath[file_name] = file_path;
+                    filenameToPath[file_name] = command[1];
 
                     ifstream fin;
-                    fin.open(file_path);
+                    fin.open(command[1]);
                     vector<string> sha1;
                     while (fin)
                     {
                         fin.read(chunk, chunk_size);
-                        if (!fin.gcount()){
+                        if (!fin.gcount())
+                        {
                             cout << "Error...\n";
                             break;
                         }
@@ -496,7 +591,7 @@ int main(int argc, char *argv[])
                     }
                     // upload_file <file_path> <group_id>
                     cout << argument << "\n";
-                    argument += " " + username + " " + file_name + " " + file_path + " " + to_string(file_size) + " ";
+                    argument += " " + username + " " + file_name + " " + command[1] + " " + to_string(file_size) + " ";
                     for (auto i = 0; i < sha1.size(); i++)
                         argument += sha1[i] + " ";
                     string reply = send_message(listening, argument);
@@ -506,6 +601,20 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(command[0].c_str(), "download_file") == 0)
         {
+            if (command.size() != 4)
+            {
+                cout << "Invalid Arguments\n";
+                continue;
+            }
+            if (isLoggedIn == 0)
+                cout << "Login First..\n";
+            else if (isLoggedIn == 1)
+            { // download_file <group_id> <file_name> <destination_path>
+                copy_file(command[2], command[3]);
+                argument += " " + username;
+                string reply = send_message(listening, argument);
+                cout << reply << "\n";
+            }
         }
         else if (strcmp(command[0].c_str(), "show_downloads") == 0)
         {
@@ -518,9 +627,9 @@ int main(int argc, char *argv[])
                 cout << "Login First..\n";
             else if (isLoggedIn == 1)
             {
-                for(int i = 0; i < downloading.size(); i++)
+                for (int i = 0; i < downloading.size(); i++)
                     cout << "[D] " << downloading[i] << "\n";
-                for(auto i = filenameToPath.begin(); i != filenameToPath.end(); i++)
+                for (auto i = filenameToPath.begin(); i != filenameToPath.end(); i++)
                     cout << "[C] " << i->first << "\n";
             }
         }
@@ -565,7 +674,7 @@ int main(int argc, char *argv[])
         //     exit(1);
         // }
     }
-    thr.join();
+    // thr.join();
     close(listening);
     cout << "Socket Connection Closed...\n";
 
