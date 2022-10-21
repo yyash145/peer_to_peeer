@@ -258,48 +258,48 @@ string getFileName(string path){
 
 int main(int argc, char const *argv[]) 
 { 
-	// if(argc != 3){
-	// 	cout<<"Invalid Args\n";
-	// 	return 1;
-	// }
-	// // isLoggedIn = 0;
-	// logged_out();
-	// // .
-	// string client_ip, client_port, tracker_ip, tracker_port;
-	// int ind = 0;
-	// while(argv[1][ind] != ':'){
-	// 	client_ip.push_back(argv[1][ind++]);
-	// }
-	// ind++;
-	// while(argv[1][ind] != '\0'){
-	// 	client_port.push_back(argv[1][ind++]);
-	// }
-	// fstream file;
-	// file.open(argv[2]);
-	// file >> tracker_ip;
-	// file >> tracker_port;
-	// // cout<<client_ip<<":"<<client_port<<" "<<tracker_ip<<":"<<tracker_port<<endl;
-	// 	//  .
-	// tracker_sock = 0; 
-	// struct sockaddr_in serv_addr; 
-	// if ((tracker_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){ 
-	// 	printf("\n Socket creation error \n"); 
-	// 	return -1; 
-	// } 
-	// 	// .
-	// serv_addr.sin_family = AF_INET; 
-	// serv_addr.sin_port = htons(stoi(tracker_port.c_str())); 
-	// 	// .
-	// // Convert IPv4 and IPv6 addresses from text to binary form 
-	// if(inet_pton(AF_INET, tracker_ip.c_str(), &serv_addr.sin_addr)<=0) { 
-	// 	printf("\nInvalid address/ Address not supported \n"); 
-	// 	return -1; 
-	// }
-	// if (connect(tracker_sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){ 
-	// 	printf("\nConnection Failed \n"); 
-	// 	return -1; 
-	// }
-	// thread th(serve_to_peers,client_ip,client_port);
+	if(argc != 3){
+		cout<<"Invalid Args\n";
+		return 1;
+	}
+	// isLoggedIn = 0;
+	logged_out();
+	// .
+	string client_ip, client_port, tracker_ip, tracker_port;
+	int ind = 0;
+	while(argv[1][ind] != ':'){
+		client_ip.push_back(argv[1][ind++]);
+	}
+	ind++;
+	while(argv[1][ind] != '\0'){
+		client_port.push_back(argv[1][ind++]);
+	}
+	fstream file;
+	file.open(argv[2]);
+	file >> tracker_ip;
+	file >> tracker_port;
+	// cout<<client_ip<<":"<<client_port<<" "<<tracker_ip<<":"<<tracker_port<<endl;
+		//  .
+	tracker_sock = 0; 
+	struct sockaddr_in serv_addr; 
+	if ((tracker_sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){ 
+		printf("\n Socket creation error \n"); 
+		return -1; 
+	} 
+		// .
+	serv_addr.sin_family = AF_INET; 
+	serv_addr.sin_port = htons(stoi(tracker_port.c_str())); 
+		// .
+	// Convert IPv4 and IPv6 addresses from text to binary form 
+	if(inet_pton(AF_INET, tracker_ip.c_str(), &serv_addr.sin_addr)<=0) { 
+		printf("\nInvalid address/ Address not supported \n"); 
+		return -1; 
+	}
+	if (connect(tracker_sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){ 
+		printf("\nConnection Failed \n"); 
+		return -1; 
+	}
+	thread th(serve_to_peers,client_ip,client_port);
 	
 	while(1){
 		string cmd;

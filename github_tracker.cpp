@@ -375,6 +375,7 @@ void listening_peer(int peer_fd){
 			}
 		}
 		if(cmds[0] == "download"){
+			// download  file_name  group_id  uname
 			string msg = "";
 			string filetosearch = cmds[1];
 			string grp = cmds[2];

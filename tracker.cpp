@@ -11,6 +11,7 @@
 #include <algorithm> // find
 #include <unordered_map>
 #include <arpa/inet.h> // Close
+#include <typeinfo>
 
 using namespace std;
 #define MAX_CLIENTS SOMAXCONN
@@ -137,10 +138,6 @@ public:
             if (str == i->first)
                 return 1;
         }
-        // for(auto s: fileshare){
-        //     if(s.first == str)
-        //         return 1;
-        // }
         return 0;
     }
     void add(string str)
@@ -175,35 +172,7 @@ bool isGroupExists(string str)
         return 1;
 }
 
-// void accept_file(int client_socket)
-// {
-//     int n;
-//     FILE *fp;
-//     char *filename = "dummy2.txt";
-//     char buffer[4096] = {0};
-//     fp = fopen(filename, "w");
-//     if(fp == NULL)
-//     {
-//         cerr << "Error in creating file...\n";
-//         exit(1);
-//     }
-//     cout<<"File Created.\n";
-//     while(1)
-//     {
-//         n = recv(client_socket, buffer, 4096, 0);
-//         if(n == -1)
-//         {
-//             cerr << "Error in recieving file...\n";
-//             break;
-//             return;
-//         }
-//         fprintf(fp, "%s", buffer);
-//         memset(buffer, 0, 4096);
-//     }
-//     return;
-// }
-
-void quit(bool &isQuit)
+void quit1(bool &isQuit)
 {
     string s;
     cin >> s;
@@ -233,7 +202,7 @@ void getCommand(int client_socket)
             cout << client_socket << " closed...\n";
             return;
         }
-        cout << "Recieved data from " << client_socket << " -> " << buffer << "\n";
+        // cout << "Recieved data from " << client_socket << " -> " << buffer << "\n";
 
         char *token = strtok(buffer, " ");
         vector<string> command; // Converting each letter from buffer into commands[i]
@@ -261,7 +230,7 @@ void getCommand(int client_socket)
                 cout << reply;
 
                 ofstream outdata; // For making the file persistent
-                char *filename = "user_details.txt";
+                const char *filename = "user_details.txt";
                 outdata.open(filename, ios_base::app);
                 if (!outdata)
                     cerr << "Error: file could not be opened\n";
@@ -271,7 +240,7 @@ void getCommand(int client_socket)
                 outdata.close();
 
                 ofstream outdata_uig; // For making the file persistent
-                char *filename_uig = "user_in_group.txt";
+                const char *filename_uig = "user_in_group.txt";
                 outdata_uig.open(filename_uig, ios_base::app);
                 if (!outdata_uig)
                     cerr << "Error: file could not be opened\n";
@@ -292,9 +261,6 @@ void getCommand(int client_socket)
             {
                 if (users[command[1]]->password != command[2])
                 {
-                    // cout << "User = " << users[command[1]]->username<<"\n";
-                    // cout << "Password = " << users[command[1]]->password<<"\n";
-
                     string reply = "Password Doesn't Match...\n";
                     send(client_socket, reply.c_str(), reply.size(), 0);
                 }
@@ -302,9 +268,20 @@ void getCommand(int client_socket)
                 {
                     users[command[1]]->login(command[3], command[4]);
                     string reply = "Hello " + command[1] + "\n";
+
                     for (auto i = users[command[1]]->fnameToPath.begin(); i != users[command[1]]->fnameToPath.end(); i++)
                         reply += i->first + " " + i->second;
                     send(client_socket, reply.c_str(), reply.size(), 0);
+
+                    // for (auto i = files[command[2]]->fileshare.begin(); i != files[command[2]]->fileshare.end(); i++)
+                    // {
+                    //     if (i->first == command[3])
+                    //     {
+                    //         i->second = 1;
+                    //         break;
+                    //     }
+                    // }
+
                 }
             }
         }
@@ -318,8 +295,17 @@ void getCommand(int client_socket)
             else
             {
                 users[command[1]]->logout();
-                string reply = "Logged Out Successfully...\n";
+                string reply = command[1] + "Logged Out Successfully...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
+
+                // for (auto i = files[command[2]]->fileshare.begin(); i != files[command[2]]->fileshare.end(); i++)
+                // {
+                //     if (i->first == command[3])
+                //     {
+                //         i->second = 0;
+                //         break;
+                //     }
+                // }
             }
         }
 
@@ -346,7 +332,7 @@ void getCommand(int client_socket)
                 cout << reply << "\n";
 
                     ofstream outdata; // For making the file persistent
-                    char *filename = "group_details.txt";
+                    const char *filename = "group_details.txt";
                     outdata.open(filename, ios_base::app);
                     if (!outdata)
                         cerr << "Error: file could not be opened\n";
@@ -356,7 +342,7 @@ void getCommand(int client_socket)
                     outdata.close();
 
                     ofstream user_outdata; // For making the file persistent
-                    char *user_filename = "user_in_group.txt";
+                    const char *user_filename = "user_in_group.txt";
                     user_outdata.open(user_filename, ios_base::app);
                     if (!user_outdata)
                         cerr << "Error: file could not be opened\n";
@@ -411,18 +397,15 @@ void getCommand(int client_socket)
             }
             else
             {
-                    // Check if last person leaves the group
-                    // 
                 int flag = 0;
                 groups[command[1]]->removeMember(command[3]);
                 string reply = "You left the group...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
 
-                // If Admin leaves itself, handle that case too
+                // If Admin leaves itself
                 if (command[3] == groups[command[1]]->admin)
                 {
                     cout << "Admin leaves the group\n";
-                    cout << "Allmember vector size = " << groups[command[1]]->allMembers.size() << "\n";
                     if (groups[command[1]]->allMembers.size() > 1){
                         cout << "New admin = " << groups[command[1]]->allMembers[1] << "\n";
                         groups[command[1]]->admin = groups[command[1]]->allMembers[1];
@@ -432,7 +415,6 @@ void getCommand(int client_socket)
                         
                         groups.erase(command[1]); // Delete that group permanently
                         flag = 1;
-                    // groups[command[1]]->allMembers.pop_front();
 
                         string change_admin;
                         string admin;
@@ -451,7 +433,7 @@ void getCommand(int client_socket)
                         ad_fin.close();
                         remove("group_details.txt");
                         rename("ad_temp.txt", "group_details.txt");
-                        cout << command[1] << " in group_details.txt should be deleted\n";
+                        // cout << command[1] << " in group_details.txt should be deleted\n";
                     }
                 }
 
@@ -561,7 +543,7 @@ void getCommand(int client_socket)
                 cout << reply << "\n";
 
                 ofstream outdata; // For making the file persistent
-                char *filename = "user_in_group.txt";
+                const char *filename = "user_in_group.txt";
                 outdata.open(filename, ios_base::app);
                 if (!outdata)
                     cerr << "Error: file could not be opened\n";
@@ -580,14 +562,8 @@ void getCommand(int client_socket)
             else
             {
                 string reply = "";
-                cout << "HII\n";
-                // if(groups[command[1]]->group_files.size() != 0){
                 for (auto i = groups.begin(); i != groups.end(); i++)
-                {
-                    // reply += groups[command[1]]->group_files[i] + "\n";
                     reply += i->first + "\n";
-                }
-                // }
 
                 if (reply == "")
                     reply = "You are not in any group...\n";
@@ -615,10 +591,8 @@ void getCommand(int client_socket)
             {
                 string reply = "";
                 for (int i = 0; i < groups[command[1]]->group_files.size(); i++)
-                { //
-                    // for(auto j=files[i]->)
                     reply += groups[command[1]]->group_files[i] + "\n";
-                }
+                
                 if (reply == "")
                     reply = "No files to show...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
@@ -626,7 +600,7 @@ void getCommand(int client_socket)
         }
 
         else if (strcmp(command[0].c_str(), "upload_file") == 0)
-        { // Error Handling
+        { 
             if (!isUserExists(command[3]))
             {
                 string reply = "User doesn't exists...\n";
@@ -653,27 +627,40 @@ void getCommand(int client_socket)
                         string reply = "File is already there...\n";
                         send(client_socket, reply.c_str(), reply.size(), 0);
                     }
-                    else if (!files[command[4]]->isUser(command[3])) //
+                    else if (!files[command[4]]->isUser(command[3])) 
                     {
                         files[command[4]]->add(command[3]);
                         users[command[3]]->fnameToPath[command[4]] = command[5];
-                        string reply = command[4] + " Uploaded Successfully...\n";
+                        string reply = command[4] + " Uploaded Successfully(1)...\n";
                         send(client_socket, reply.c_str(), reply.size(), 0);
                     }
                 }
                 else if (files.find(command[4]) == files.end())
                 {
+                    // upload_file <file_path> <group_id> <username> <file_name> <file_path> <file_size> <SHA1's>
+
                     myFile *newfile = new myFile(command[4], stoi(command[6])); // Make a new file with entries file name and file size
                     newfile->add(command[3]);                                   // Add in fileshare vector wrt username
                     files[command[4]] = newfile;                                // Add in map with key as its filename
-                    users[command[3]]->fnameToPath[command[3]] = command[5];    // Add in map wrt username
+                    users[command[3]]->fnameToPath[command[4]] = command[5];    // Add in map wrt username
                     for (int i = 7; i < command.size(); i++)
                         newfile->sha1.push_back(command[i]); // Add in SHA1
-                    string reply = command[4] + " Uploaded Successfully...\n";
+                    string reply = command[4] + " Uploaded Successfully(2)...\n";
                     send(client_socket, reply.c_str(), reply.size(), 0);
+
+                // Have to update this due to sha1
+                    // ofstream outdata; // For making the file persistent
+                    // char *filename = "files_in_group.txt";
+                    // outdata.open(filename, ios_base::app);
+                    // if (!outdata)
+                    //     cerr << "Error: file could not be opened\n";
+                    // outdata << command[2] << " ";
+                    // outdata << command[1] << "\n";
+                    // outdata.close();
+
                 }
             }
-        }
+        }   
         else if (strcmp(command[0].c_str(), "download_file") == 0)
         {
             // download_file <group_id> <file_name> <destination_path> username
@@ -681,18 +668,21 @@ void getCommand(int client_socket)
             {
                 string reply = "User doesn't exists...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
+                continue;
             }
-            else if (!isGroupExists(command[1]))
+            if (!isGroupExists(command[1]))
             {
                 string reply = "Group doesn't exists...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
+                continue;
             }
-            else if (!groups[command[2]]->isFile(command[1]))
+            if (!groups[command[1]]->isFile(command[2]))
             {
                 string reply = "File doesn't exists in this group...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
+                continue;
             }
-            else if (!groups[command[2]]->isMember(command[1]))
+            if (!groups[command[1]]->isMember(command[4]))
             {
                 string reply = "You are not the member of the group, " + command[2] + "...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
@@ -700,22 +690,17 @@ void getCommand(int client_socket)
             else
             { // stop_share <group_id> <file_name> username;
                 string reply = "";
-                // for(auto i=files[command[1]]->sha1.begin(); i < files[command[1]]->sha1.end(); i++)
-                //     reply += i + " ";
-
-                for(auto i : files[command[1]]->sha1)
+                for(auto i : files[command[2]]->sha1)
                     reply += i + " ";
-                    reply += "; ";
-
-                for(auto t_user: files[command[1]]->fileshare){
+                    reply += "file ";
+                for(auto t_user: files[command[2]]->fileshare){
                     if(users[t_user.first]->isLoggedIn && t_user.second)	// User is logged in and sharing.
                         reply += users[t_user.first]->ip_address+" "+users[t_user.first]->port_number+" ";
-                    
-			}
+			    }
                 // reply += "Stopped Sharing...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }
-        }
+        }     
         else if (strcmp(command[0].c_str(), "stop_share") == 0)
         {
             if (!isUserExists(command[3]))
@@ -768,17 +753,28 @@ int main(int argc, char *argv[])
 
     if (argc != 3)
     {
-        cout << "Required command line input in \" ./tracker tracker_info.txt tracker_no\" ";
+        cout << "Required command line input is \" ./tracker tracker_info.txt tracker_no\" ";
         exit(1);
     }
 
     fstream tracker_info;
     tracker_info.open(argv[1]);
-    string tracker_ip, tracker_port;
-    tracker_info >> tracker_ip;
-    tracker_info >> tracker_port;
-    cout << "Tracker IP Address is " << tracker_ip << " and port number is " << tracker_port << "\n";
+    string tracker1_ip, tracker1_port, tracker2_ip, tracker2_port;
+    tracker_info >> tracker1_ip;
+    tracker_info >> tracker1_port;
+    tracker_info >> tracker2_ip;
+    tracker_info >> tracker2_port;
+    tracker_info.close();
 
+    string aaa = string(argv[2]);
+    if(aaa == "1")
+        cout << "Tracker IP Address is " << tracker1_ip << " and port number is " << tracker1_port << "\n";
+    
+    else if (aaa == "2")
+        cout << "Tracker IP Address is " << tracker2_ip << " and port number is " << tracker2_port << "\n";
+    
+    
+    {
         ifstream fin("user_details.txt"); // opening text file
         char ch;
         string word;
@@ -869,7 +865,35 @@ int main(int argc, char *argv[])
         }
         u_fin.close();
 
-
+            // users[command[3]]->fnameToPath[command[3]] = command[5];
+            // ifstream f_fin("files_in_group.txt"); // opening text file
+            // char f_ch;
+            // string user_file;
+            // vector<string> user_file_group;
+            // f_fin.seekg(0, ios::beg); // bring position of file pointer to begining of file
+            // if (!f_fin)
+            //     cerr << "Error: Input file could not be opened\n";
+            // while (f_fin)
+            // {
+            //     f_fin.get(f_ch);
+            //     user_file += f_ch;
+            //     if (f_ch == ' ' || f_ch == '\n')
+            //     {
+            //         user_file = user_file.substr(0, user_file.length() - 1);
+            //         user_file_group.push_back(user_file);
+            //         user_file = "";
+            //     }
+            // }
+            // if (user_file_group.size() > 1)
+            // {
+            //     for (i = 0; i < user_file_group.size() - 1; i += 2)
+            //     {
+            //         if (!isFileExists(user_file_group[i+1]))
+            //             users[user_file_group[i]]->fnameToPath[user_file_group[i]]=(user_file_group[i + 1]);
+            //     }
+            // }
+            // f_fin.close();
+    }
 
     // Create a socket                      // int socket(int domain, int type, int protocol);
     int listening = socket(AF_INET, SOCK_STREAM, 0); // AF_INET is used for IPv4
@@ -895,10 +919,15 @@ int main(int argc, char *argv[])
                                                                    // Sockaddr_in is for IPv6
     server_addr.sin_family = AF_INET;                              // sin is shorthand for the name of the struct (sockaddr_in) that the member-variables are a part of.
                                                                    // sin_family refers to an address family which in most of the cases is set to “AF_INET”.
-    server_addr.sin_port = htons(stoi(tracker_port.c_str()));      // The htons function takes a 16-bit number in host byte order and returns a 16-bit number in network byte order used in TCP/IP networks.
-                                                                   // Intel supports little-endian format, which means the leats significant bytes are stored before the more significant bytes.
-                                                                   // htons refers to host-to-network short.
-    inet_pton(AF_INET, tracker_ip.c_str(), &server_addr.sin_addr); // The inet_pton() function converts an Internet address in its standard text format into its numeric binary form.
+    // if(argv[2] == "1")
+        server_addr.sin_port = htons(stoi(tracker1_port.c_str()));      // The htons function takes a 16-bit number in host byte order and returns a 16-bit number in network byte order used in TCP/IP networks.
+    // else if (argv[2] == "2")                                            // Intel supports little-endian format, which means the leats significant bytes are stored before the more significant bytes.
+        // server_addr.sin_port = htons(stoi(tracker2_port.c_str()));      // htons refers to host-to-network short.
+    
+    // if(argv[2] == "1")
+        inet_pton(AF_INET, tracker1_ip.c_str(), &server_addr.sin_addr); // The inet_pton() function converts an Internet address in its standard text format into its numeric binary form.
+    // else if (argv[2] == "2")
+        // inet_pton(AF_INET, tracker2_ip.c_str(), &server_addr.sin_addr);
 
     int binding = bind(listening, (sockaddr *)&server_addr, sizeof(server_addr)); // The bind() function binds a unique local name to the socket with descriptor socket.
                                                                                   // Bind socket "listening" using format "AF_NET" to "server_addr" structure
@@ -922,16 +951,14 @@ int main(int argc, char *argv[])
     char host[NI_MAXHOST];
     char service[NI_MAXSERV];
 
-    // accept_file(client_socket);
-    // cout << "Data written in the text file...\n";
-
-    thread exit(quit, ref(isQuit));
+    thread quit(quit1, ref(isQuit));
 
 
     // While recieving, display the msg
     char buffer[4096];
     while (true)
     {
+        
         memset(buffer, 0, 4096);
         // Accept a call
         socklen_t client_size = sizeof(client_addr);
@@ -960,28 +987,9 @@ int main(int argc, char *argv[])
             cout << host << " connented on " << ntohs(client_addr.sin_port) << "\n";
         }
 
+        if(isQuit == 1)
+            break;
         peers.push_back(thread(getCommand, client_socket));
-
-        // // Clear the buffer
-        // memset(buffer, 0, 4096);
-        // // Read data from client
-        // int n = read(client_socket, buffer, 4096);
-        // if(n == -1)
-        // {
-        //     cout << "Error in reading.\n";
-        //     exit(1);
-        // }
-        // Print client request data
-        // cout << "\nClient --> " << buffer;
-        // memset(buffer, 0, 4096);
-        // Write data through client
-        // fgets(buffer, 4096, stdin);
-        // n = write(client_socket, buffer, 4096);
-        // if(n == -1)
-        // {
-        // cout << "Error in Writing.\n";
-        // exit(1);
-        // }
 
     }
     cout << "Total threads = " << peers.size() << "\n";
@@ -994,4 +1002,5 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
 

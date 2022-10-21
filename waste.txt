@@ -1,49 +1,23 @@
+login yash 1234
+login yash1 1234
 
-// string change_admin;
-                            // string admin;
-                            // ifstream ad_fin;
-                            // ad_fin.open("group_details.txt");
-                            // ofstream ad_temp;
-                            // ad_temp.open("ad_temp.txt");
-                            // change_admin = command[1] + " " + command[3];
-                            // cout << "Group_details.txt = " << change_admin << change_admin.size() << "\n";
-                            // while (getline(ad_fin, admin))
-                            // {
-                            //     if (admin != change_admin)
-                            //         ad_temp << admin << "\n";
-                            //     else
-                            //     {
-                            //         ad_temp << command[1] << " ";
-                            //         ad_temp << groups[command[1]]->admin << "\n";
-                            //     }
-                            // }
-                            // ad_temp.close();
-                            // ad_fin.close();
-                            // remove("group_details.txt");
-                            // rename("ad_temp.txt", "group_details.txt");
-                    }
-                    else{
-                        groups.erase(command[1]); // Delete that group permanently
 
-                            // string change_admin;
-                            // string admin;
-                            // ifstream ad_fin;
-                            // ad_fin.open("group_details.txt");
-                            // ofstream ad_temp;
-                            // ad_temp.open("ad_temp.txt");
-                            // change_admin = command[1] + " " + command[3];
-                            // cout << "Group_details.txt = " << change_admin << change_admin.size() << "\n";
-                            // while (getline(ad_fin, admin))
-                            // {
-                            //     if (admin != change_admin)
-                            //         ad_temp << admin << "\n";
-                            //     // else
-                            //     // {
-                            //     //     ad_temp << command[1] << " ";
-                            //     //     ad_temp << groups[command[1]]->admin << "\n";
-                            //     // }
-                            // }
-                            // ad_temp.close();
-                            // ad_fin.close();
-                            // remove("group_details.txt");
-                            // rename("ad_temp.txt", "group_details.txt");
+yash logged in
+veda logged in
+yash1 logged in
+
+upload_file ./waste.txt iiit
+upload_file ./1.jpeg iiit
+upload_file ./down/1.jpeg iiit
+upload_file ./2.mp4 iiit
+upload_file ./down/2.mp4 iiit
+upload_file ./3.mp4 iiit
+upload_file ./checkch.txt iiit
+
+download_file iiit waste.txt ./down
+download_file iiit 1.jpeg ./down
+download_file iiit 2.mp4 ./down
+download_file iiit 3.mp4 ./down
+download_file iiit checkch.txt ./down
+
+show_downloads
