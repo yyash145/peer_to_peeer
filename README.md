@@ -1,12 +1,18 @@
-socket() creates  an endpoint for communication and returns a file descriptor that refers to that endpoint. The file descriptor returned by a  successful call will be the lowest-numbered file descriptor not currently open for the process.
+### My code is persistent, i.e., usernames, groups and users in the group are stored in a file and we don't need to remake it.
 
-On success, a file descriptor for the new socket is returned. On error, -1 is returned, and errno is set appropriately.
+- Don't give plain path (e.g. abc.txt), instead give it like ./abc.txt
 
-POSIX.1 does  not require the inclusion of <sys/types.h>, and this header file is not required on Linux. However, some historical (BSD) implementations required this header file, and portable applications are probably wise to include it.
+# How to implement it
+- cd tracker
+-    g++ tracker.cpp -o tracker
+-   ./tracker tracker_info.txt <Tracker_number>
+-   e.g. (./tracker tracker_info.txt 1/2)
 
-A port number is a way to identify a specific process to which an internet or other network message is to be forwarded when it arrives at a server. All network-connected devices come equipped with standardized ports that have an assigned number.
+- cd ../client
+-    make or g++ client.cpp sha1.cpp -g -Wall -o client -lssl -lcrypto
+-   ./client <IP>:<PORT> tracker_info.txt
+-   e.g. (./client 127.0.0.1:54002 tracker_info.txt)
 
-Persistent, i.e., usernames and their groups are stored in a file and we don't need to remake it.
+### tracker_info.txt - Contains IP, port details of all the trackers
 
 
- g++ client.cpp -g -Wall -o client -lssl -lcrypto
