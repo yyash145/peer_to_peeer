@@ -1,18 +1,18 @@
-#include <sys/socket.h> // Used for sockets
-#include <string.h>     // Used for memset
-#include <netdb.h>      // getnameinfo  - address-to-name translation in protocol-independent manner
-#include <vector>       // VECTORS
-#include <thread>       // Used for threads
-#include <pwd.h>        // Used for finding user name for absolute path
-#include <fstream>      // Used for fstream
-#include <sstream>      // stringstream(Input)
-#include <unistd.h>     // Read/Write, etc... operations
-#include <algorithm>    // Find(map)
-#include <arpa/inet.h>  // Close
-#include <unordered_map>// UNORDERED MAP
-#include "sha1.h"       // SHA1
-#include <sys/stat.h>   // For Current/Present Working Directory
-#include <fcntl.h>      // Used for finding user name for absolute path
+#include <sys/socket.h>  // Used for sockets
+#include <string.h>      // Used for memset
+#include <netdb.h>       // getnameinfo  - address-to-name translation in protocol-independent manner
+#include <fcntl.h>       // Used for finding user name for absolute path
+#include <vector>        // VECTORS
+#include <thread>        // Used for threads
+#include <pwd.h>         // Used for finding user name for absolute path
+#include "sha1.h"        // SHA1
+#include <sstream>       // stringstream(Input)
+#include <fstream>       // Used for fstream
+#include <unistd.h>      // Read/Write, etc... operations
+#include <algorithm>     // Find(map)
+#include <sys/stat.h>    // For Current/Present Working Directory
+#include <arpa/inet.h>   // Close
+#include <unordered_map> // UNORDERED MAP
 
 using namespace std;
 #define chunksize 524288
@@ -91,9 +91,22 @@ mode_t check_mode(string path)
 
 void download_file(string file_name, string destination_path)
 {
+    cout << "File Name = " << file_name << "\n";
     string source = absolute_path(file_name);
+    cout << "Source = " << source << "\n";
+    cout << "Destination path = " << destination_path << endl;
     string dest = absolute_path(destination_path);
-    string destination = dest + "/" + file_name;
+    string fname = "";
+    int size_of_file_path = file_name.size();
+    int i = size_of_file_path - 1;
+    while (file_name[i--] != '/')
+        ;
+    i += 2;
+    while (i < size_of_file_path)
+        fname += file_name[i++];
+    string destination = dest + "/" + fname;
+    cout << "Dest = " << dest << endl;
+    cout << "Destination = " << destination << endl;
 
     if (!(check_dir(dest)))
     {
@@ -142,6 +155,7 @@ string send_message(int listening, string str)
 
 vector<string> downloading; // Used in show_downloads
 string username;
+string files_name;
 bool isLoggedIn;
 unordered_map<string, string> filenameToPath;
 
@@ -172,7 +186,6 @@ void download_chunks(int number_of_chunks, string sha1_hash_of_this_chunk, strin
         cerr << "Can't create a socket on this peer\n";
         exit(1);
     }
-
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(stoi(port.c_str()));
@@ -193,21 +206,16 @@ void download_chunks(int number_of_chunks, string sha1_hash_of_this_chunk, strin
     string reply = "down_load " + file_name + " " + to_string(chunk_number);
     send(down_peer, reply.c_str(), reply.size(), 0);
 
-    // cout << "Number of chunks -> " << number_of_chunks << "\n";
-    // cout << "chunk_number -> " << chunk_number << "\n";
-    cout << "Filename -> " << file_pathh<< "\n";
-
     char buffer[chunksize];
     memset(buffer, 0, chunksize);
     long int file_size = file_size_stat(file_pathh);
-    cout << "File size = " << file_size << "\n";
+    // cout << "File size = " << file_size << "\n";
 
     string destination = destination_path;
     fstream outfile(destination, std::fstream::in | std::fstream::out | std::fstream::binary);
     outfile.seekp(chunksize * (chunk_number - 1), ios::beg);
     if (number_of_chunks == chunk_number)
     {
-        // cout << "number_of_chunks == chunk_number(" << chunk_number << ")\n";
         for (int i = 0; i < (file_size % chunksize) / arraysize; i++)
         {
             char file_arr[arraysize];
@@ -220,7 +228,6 @@ void download_chunks(int number_of_chunks, string sha1_hash_of_this_chunk, strin
     }
     else
     {
-        // cout << "number_of_chunks != chunk_number(" << number_of_chunks << " != " << chunk_number << ")\n";
         for (int i = 0; i < 32; i++)
         {
             char file_arr[arraysize];
@@ -233,25 +240,25 @@ void download_chunks(int number_of_chunks, string sha1_hash_of_this_chunk, strin
     return;
 }
 
-void client_as_a_client(vector<string> sha1_hash, vector<pair<string, string>> socket, string file_name, string destination_path, string file_pathh)
+void client_as_a_client(vector<string> sha1_hash, vector<pair<string, string>> socket, string file_name, string destination_path, string file_pathh, int listening, string groupid, string full_path)
 {
     int number_of_chunks = sha1_hash.size();
     int number_of_peers = socket.size();
     downloading.push_back(file_name);
     vector<thread> fetch_chunks;
+    string dest = destination_path;
     destination_path = absolute_path(destination_path) + "/" + file_name;
-    // cout << "Number of Chunks = " << number_of_chunks << "\n";
-    // cout << "Number of Peers = " << number_of_peers << "\n";
-    // cout << "Downloading " << file_name << "...\n";
-    // cout << "Destination Path" << destination_path << "\n";
-    ofstream destination_file(destination_path.c_str(), std::ios::out);
+    // download_file(full_path, dest); //
+    cout << "Number of Peers = " << number_of_peers << "\n";
+    cout << "Downloading " << file_name << "...\n";
+    cout << "Number of Chunks = " << number_of_chunks << "\n";
 
+    ofstream destination_file(destination_path.c_str(), std::ios::out);
     // Piece Selection Algorithm
     if (number_of_chunks <= number_of_peers)
     {
-        // cout << "number_of_chunks <= number_of_peers\n";
         for (int i = 0; i < number_of_chunks; i++)
-            fetch_chunks.push_back(thread(download_chunks, number_of_chunks, sha1_hash[i], socket[i].first, socket[i].second, i+1, file_name, destination_path, file_pathh));
+            fetch_chunks.push_back(thread(download_chunks, number_of_chunks, sha1_hash[i], socket[i].first, socket[i].second, i + 1, file_name, destination_path, file_pathh));
 
         while (fetch_chunks.size() >= 1)
         {
@@ -262,7 +269,6 @@ void client_as_a_client(vector<string> sha1_hash, vector<pair<string, string>> s
 
     else if (number_of_chunks > number_of_peers)
     {
-        // cout << "number_of_chunks > number_of_peers\n";
         int divisor = number_of_chunks / number_of_peers;
         int remainder = number_of_chunks % number_of_peers;
         int chunk_number = 0;
@@ -270,7 +276,7 @@ void client_as_a_client(vector<string> sha1_hash, vector<pair<string, string>> s
         {
             for (int j = 0; j < divisor; j++)
             {
-                fetch_chunks.push_back(thread(download_chunks, number_of_chunks, sha1_hash[chunk_number], socket[i].first, socket[i].second, chunk_number+1, file_name, destination_path, file_pathh));
+                fetch_chunks.push_back(thread(download_chunks, number_of_chunks, sha1_hash[chunk_number], socket[i].first, socket[i].second, chunk_number + 1, file_name, destination_path, file_pathh));
                 chunk_number++;
             }
         }
@@ -290,35 +296,63 @@ void client_as_a_client(vector<string> sha1_hash, vector<pair<string, string>> s
     downloading.erase(find(downloading.begin(), downloading.end(), file_name)); // After downloading, erase it
     cout << "Download complete for " << file_name << "\n";
     filenameToPath[file_name] = destination_path;
-    
+
     char *chunk = new char[chunksize];
     ifstream fin;
     fin.open(destination_path, ios::binary);
     vector<string> sha1;
-    // int cnt = 0;
+
     while (fin)
     {
         fin.read(chunk, chunksize);
         if (!fin.gcount())
             break;
-        
         string sha_chunk = sha11((chunk)).substr(0, 20);
         sha1.push_back(sha_chunk);
-        // cnt++;
-        // cout << "SHA(" << cnt << ")" << sha_chunk << "\n";
     }
-    
+
     int flag = 0;
-    for(unsigned long int i = 0; i<min(sha1_hash.size(), sha1.size()); i++)
+    for (unsigned long int i = 0; i < min(sha1_hash.size(), sha1.size()); i++)
     {
-        if(sha1_hash[i] != sha1[i]){
+        if (sha1_hash[i] != sha1[i])
+        {
             flag = 1;
             break;
         }
     }
-    if(flag == 0)
+    if (flag == 0)
         cout << "File obtained is perfect\n";
-    else   cout << "File may be currupted\n";
+    // else
+    //     cout << "File may be currupted\n";
+
+    long int file_size = file_size_stat(destination_path);
+    if (file_size >= 0)
+    {
+        size_t chunk_size = chunksize;
+        char *chunk = new char[chunk_size];
+        filenameToPath[file_name] = destination_path;
+
+        ifstream fin;
+        fin.open(destination_path, ios::binary);
+        vector<string> sha1;
+        while (fin)
+        {
+            fin.read(chunk, chunk_size);
+            if (!fin.gcount())
+            {
+                cout << "Error...\n";
+                break;
+            }
+            string sha_chunk = sha11((chunk)).substr(0, 20);
+            sha1.push_back(sha_chunk);
+        }
+
+        string argument = "upload_file " + destination_path + " " + groupid + " " + username + " " + file_name + " " + destination_path + " " + to_string(file_size) + " ";
+        for (long unsigned int i = 0; i < sha1.size(); i++)
+            argument += sha1[i] + " ";
+        string reply = send_message(listening, argument);
+        // cout << reply << "\n";
+    }
 
     return;
 }
@@ -338,9 +372,6 @@ void client_as_a_server(int new_socket)
     {
         cerr << "Peer disconnected...\n";
     }
-    // cout << "Reading in client_as_a_server\n";
-    // cout << "Read = " << bytes_read << "\n";
-    // cout << "Buffer(CS) -> " << buffer << endl;
     vector<string> command;
     char *token = strtok(buffer, " "); // const_cast is used to remove the const qualifier.
     while (token != NULL)
@@ -354,18 +385,18 @@ void client_as_a_server(int new_socket)
     {
         int chunk_number = stoi(command[2]);
         string downloading_file = filenameToPath[command[1]];
-        cout << "downloading_file -> " << downloading_file << "  chunk_number -> " << chunk_number << "\n";
+        cout << "chunk_number -> " << chunk_number << "\n";
         ifstream fin(downloading_file.c_str(), std::ios::in | std::ios::binary);
-        fin.seekg(chunksize * (chunk_number - 1), fin.beg);
-        char chunk[chunksize] = {0};
+        // fin.seekg(chunksize * (chunk_number - 1), fin.beg);
+        fin.seekg(chunksize * (chunk_number - 1), ios::beg);
+        char chunk[chunksize] = {'\0'};
         fin.read(chunk, chunksize);
         send(new_socket, chunk, chunksize, 0);
+        memset(chunk, '\0', chunksize);
     }
     else
-    {
         cout << "Invalid message from peer\n";
-    }
-
+    
     return;
 }
 
@@ -494,7 +525,8 @@ int main(int argc, char *argv[])
             cerr << "Connection Shifted to tracker 2.\n";
             cout << "Reload the command\n";
         }
-        else{
+        else
+        {
             cout << "Client Connected with server 1...\n";
             cout << "Tracker IP Address is " << tracker_ip << " and port number is " << tracker_port << "\n";
         }
@@ -518,13 +550,14 @@ int main(int argc, char *argv[])
             cerr << "Connection Shifted to tracker 1.\n";
             cout << "Reload the command\n";
         }
-        else{
+        else
+        {
             cout << "Client Connected with server 2...\n";
             cout << "Tracker IP Address is " << tracker2_ip << " and port number is " << tracker2_port << "\n";
         }
     }
 
-   cout << "Client IP Address is " << client_ip << " and port number is " << client_port << "\n";
+    cout << "Client IP Address is " << client_ip << " and port number is " << client_port << "\n";
 
     thread thr(&create_thread_after_each_client_formation, client_ip, client_port);
     // Whenever we make any client, it can also seld files, hence have to be act as a server.
@@ -592,10 +625,12 @@ int main(int argc, char *argv[])
                     reply_token.push_back(token);
                     token = strtok(NULL, " ");
                 }
-                for (long unsigned int i = 2; i < reply_token.size(); i += 2)
-                {
-                    filenameToPath[reply_token[i]] = reply_token[i + 1];
-                    cout << reply_token[i] << " -> " << reply_token[i + 1] << "\n";
+                if(reply_token.size() > 3){
+                    for (long unsigned int i = 1; i < reply_token.size(); i += 5)
+                    {
+                        // filenameToPath[reply_token[i]] = reply_token[i + 1];
+                        cout << reply_token[i] << " starts sharing" << "\n";
+                    }
                 }
             }
             else
@@ -774,7 +809,8 @@ int main(int argc, char *argv[])
                 string file_name = "";
                 int size_of_file_path = command[1].size();
                 int i = size_of_file_path - 1;
-                while (command[1][i--] != '/');
+                while (command[1][i--] != '/')
+                    ;
                 i += 2;
                 while (i < size_of_file_path)
                     file_name += command[1][i++];
@@ -809,6 +845,7 @@ int main(int argc, char *argv[])
                         string sha_chunk = sha11((chunk)).substr(0, 20);
                         sha1.push_back(sha_chunk);
                     }
+                    // cout << "aa= " << file_name << "  " << file_path << "\n";
 
                     argument += " " + username + " " + file_name + " " + file_path + " " + to_string(file_size) + " ";
                     for (long unsigned int i = 0; i < sha1.size(); i++)
@@ -858,7 +895,7 @@ int main(int argc, char *argv[])
                     token = strtok(NULL, " ");
                 }
                 string file_path = reply_token[0];
-                cout << file_path << "\n";
+                // cout << "File Path = " << file_path << "\n";
                 long unsigned int index = 1;
                 while (reply_token[index] != "file")
                 {
@@ -876,8 +913,10 @@ int main(int argc, char *argv[])
                     cout << "No peer is serving this file currently...\n";
                 else
                 {
+                    // cout << "Full path = " << reply_token[0] << endl << endl;
                     vector<thread> current_downloaders;
-                    current_downloaders.push_back(thread(client_as_a_client, sha1_hash, socket, command[2], command[3], file_path));
+
+                    current_downloaders.push_back(thread(client_as_a_client, sha1_hash, socket, command[2], command[3], file_path, listening, command[1], reply_token[0]));
                     while (current_downloaders.size() > 0)
                     {
                         current_downloaders[0].join();
