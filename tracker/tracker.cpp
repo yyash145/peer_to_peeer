@@ -13,8 +13,6 @@
 using namespace std;
 #define MAX_CLIENTS SOMAXCONN
 #define ll long long
-vector<string> fil;
-vector<string>fil_nam;
 
 class user
 {
@@ -65,7 +63,6 @@ public:
     int count_member;
     vector<string> allMembers;
     vector<string> group_files;
-    vector<string> group_file_path;
     vector<string> pendingRequests;
 
     group(string gid, string owner_name)
@@ -264,20 +261,11 @@ void getCommand(int client_socket)
                     string reply = "Hello " + command[1] + "\n";
 
                     for (auto i = users[command[1]]->fnameToPath.begin(); i != users[command[1]]->fnameToPath.end(); i++)
-                        reply += i->first + " present for this peer.\n";
-                    
-                    for(int j=0; j<fil.size(); j++){
-                        for (auto i = files[fil[j]]->fileshare.begin(); i != files[fil[j]]->fileshare.end(); i++)
-                        {
-                            if (i->first == command[1])
-                            {
-                                i->second = 1;
-                                // reply += "\n" + i->first + " starts sharing";
-                            }
-                        }
-                    }
-
+                        reply += i->first + " " + i->second;
                     send(client_socket, reply.c_str(), reply.size(), 0);
+
+
+
                 }
             }
         }
@@ -292,24 +280,6 @@ void getCommand(int client_socket)
             {
                 users[command[1]]->logout();
                 string reply = command[1] + " Logged Out Successfully...\n";
-
-                fil.clear();
-                fil_nam.clear();
-                for (auto i = users[command[1]]->fnameToPath.begin(); i != users[command[1]]->fnameToPath.end(); i++){
-                    fil.push_back(i->first);
-                    fil_nam.push_back(i->second);
-                }
-                
-                for(int j=0; j<fil.size(); j++){
-                    for (auto i = files[fil[j]]->fileshare.begin(); i != files[fil[j]]->fileshare.end(); i++)
-                    {
-                        if (i->first == command[1])
-                        {
-                            i->second = 0;
-                            reply +=  "\nStopped Share " + fil[j];
-                        }
-                    }
-                }
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }
         }
@@ -412,8 +382,8 @@ void getCommand(int client_socket)
                 {
                     cout << "Admin leaves the group\n";
                     if (groups[command[1]]->allMembers.size() > 1){
-                        cout << "New admin = " << groups[command[1]]->allMembers[0] << "\n";
-                        groups[command[1]]->admin = groups[command[1]]->allMembers[0];
+                        cout << "New admin = " << groups[command[1]]->allMembers[1] << "\n";
+                        groups[command[1]]->admin = groups[command[1]]->allMembers[1];
                     }
                     else{
                         cout << "Group deleted\n";
@@ -438,6 +408,7 @@ void getCommand(int client_socket)
                         ad_fin.close();
                         remove("group_details.txt");
                         rename("ad_temp.txt", "group_details.txt");
+                        // cout << command[1] << " in group_details.txt should be deleted\n";
                     }
                 }
 
@@ -463,6 +434,7 @@ void getCommand(int client_socket)
                 // Change in group_details.txt
                 if (flag == 0){
                     cout << groups[command[1]]->allMembers.size() << "\n";
+                    cout << "Going in...\n";
                     string change_admin;
                     string admin;
                     ifstream ad_fin;
@@ -569,7 +541,7 @@ void getCommand(int client_socket)
                     reply += i->first + "\n";
 
                 if (reply == "")
-                    reply = "No group exists...\n";
+                    reply = "You are not in any group...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }
         }
@@ -625,10 +597,8 @@ void getCommand(int client_socket)
             }
             else
             {
-                if (!groups[command[2]]->isFile(command[4])){
+                if (!groups[command[2]]->isFile(command[4]))
                     groups[command[2]]->group_files.push_back(command[4]);
-                    groups[command[2]]->group_file_path.push_back(command[1]);
-                }
                 if (files.find(command[4]) != files.end())
                 { // If file found in files map
                     if (files[command[4]]->isUser(command[3]))
@@ -652,11 +622,14 @@ void getCommand(int client_socket)
                     myFile *newfile = new myFile(command[4], stoi(command[6])); // Make a new file with entries file name and file size
                     newfile->add(command[3]);                                   // Add in fileshare vector wrt username
                     files[command[4]] = newfile;                                // Add in map with key as its filename
+                    // user *obj = new user()
                     users[command[3]]->fnameToPath[command[4]] = command[5]; 
 
+                    // cout << users[command[3]]->username<< endl;
+                    // cout << "upload -> " << command[5] << "\n";  // Add in map wrt username
                     for (int i = 7; i < command.size(); i++)
                         newfile->sha1.push_back(command[i]); // Add in SHA1
-                    string reply = command[4] + " Uploaded Successfully...\n";
+                    string reply = command[4] + " Uploaded Successfully(2)...\n";
                     send(client_socket, reply.c_str(), reply.size(), 0);
 
                 // Have to update this due to sha1
@@ -695,19 +668,21 @@ void getCommand(int client_socket)
             }
             if (!groups[command[1]]->isMember(command[4]))
             {
-                string reply = "You are not the member of the group, " + command[1] + "...\n";
+                string reply = "You are not the member of the group, " + command[2] + "...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }
             else
             {
-                // username filename filepath
-                string file_path;
-                for(auto u: users){
-                    if(u.second->fnameToPath.find(command[2]) !=  u.second->fnameToPath.end())
-                    {
-                        file_path = u.second->fnameToPath[command[2]];
-                    }
+            // username filename filepath
+            string file_path;
+            cout << "aa " << users[command[4]]->username << "\n";
+            for(auto u: users){
+                if(u.second->fnameToPath.find(command[2]) !=  u.second->fnameToPath.end())
+                {
+                    file_path = u.second->fnameToPath[command[2]];
                 }
+            }
+            // cout << "File_path = " << file_path << "\n";
                 string reply = file_path + " ";
                 for(auto i : files[command[2]]->sha1)
                     reply += i + " ";
@@ -715,8 +690,8 @@ void getCommand(int client_socket)
                 for(auto t_user: files[command[2]]->fileshare){
                     if(users[t_user.first]->isLoggedIn && t_user.second)	// User is logged in and sharing.
                         reply += users[t_user.first]->ip_address+" "+users[t_user.first]->port_number+" ";
-                }
-                    // reply += "Stopped Sharing...\n";
+			    }
+                // reply += "Stopped Sharing...\n";
                 send(client_socket, reply.c_str(), reply.size(), 0);
             }
         }     
@@ -799,8 +774,8 @@ int main(int argc, char *argv[])
         string word;
         vector<string> words;
         fin.seekg(0, ios::beg);
-        // if (!fin)
-        //     cerr << "Error: Input file could not be opened(user_details.txt)\n";
+        if (!fin)
+            cerr << "Error: Input file could not be opened(user_details.txt)\n";
         while (fin)
         {
             fin.get(ch);
@@ -830,8 +805,8 @@ int main(int argc, char *argv[])
             string gr_word;
             vector<string> group_words;
             g_fin.seekg(0, ios::beg);
-            // if (!g_fin)
-            //     cerr << "Error: Input file could not be opened(group_details.txt)\n";
+            if (!g_fin)
+                cerr << "Error: Input file could not be opened(group_details.txt)\n";
             while (g_fin)
             {
                 g_fin.get(g_ch);
@@ -861,8 +836,8 @@ int main(int argc, char *argv[])
         string user_word;
         vector<string> user_group;
         u_fin.seekg(0, ios::beg);
-        // if (!u_fin)
-        //     cerr << "Error: Input file could not be opened(user_in_group.txt)\n";
+        if (!u_fin)
+            cerr << "Error: Input file could not be opened(user_in_group.txt)\n";
         while (u_fin)
         {
             u_fin.get(u_ch);
@@ -913,7 +888,7 @@ int main(int argc, char *argv[])
 
 
 
-    int binding = bind(listening, (sockaddr *)&server_addr, sizeof(server_addr)); // The bind() function binds a unique local name to the socket with descriptor socket.
+    int binding = ::bind(listening, (sockaddr *)&server_addr, sizeof(server_addr)); // The bind() function binds a unique local name to the socket with descriptor socket.
                                                                                   // Bind socket "listening" using format "AF_NET" to "server_addr" structure
     if (binding == -1)
     {
@@ -926,10 +901,10 @@ int main(int argc, char *argv[])
     int socket_listening = listen(listening, SOMAXCONN); // Maximum connections can be SOMAXCON(4096)
     if (socket_listening == -1)
     {
-        cerr << "Socket Can't Listen.\n";
+        cerr << "Can't Listen.\n";
         return -3;
     }
-    // cout << "Socket Start Listening...\n";
+    cout << "Socket Start Listening...\n";
 
     // sockaddr_in client_addr;
     char host[NI_MAXHOST];
